@@ -95,6 +95,10 @@ impl Pins {
             a5: self.a5,
         };
 
+        let neopixel = Neopixel {
+            ws_data: self.neopixel,
+        };
+
         // let dotstar = Dotstar {
         //     ci: self.dotstar_ci,
         //     di: self.dotstar_di,
@@ -133,7 +137,7 @@ impl Pins {
 
         Sets {
             analog,
-            // dotstar,
+            neopixel,
             spi,
             i2c,
             // flash,
@@ -151,6 +155,7 @@ pub struct Sets {
 
     // /// Dotstar (RGB LED) pins
     // pub dotstar: Dotstar,
+    pub neopixel: Neopixel,
 
     /// SPI (external pinout) pins
     pub spi: SPI,
@@ -313,6 +318,10 @@ pub struct Analog {
     pub a3: Pb9<Input<Floating>>,
     pub a4: Pa4<Input<Floating>>,
     pub a5: Pa6<Input<Floating>>,
+}
+
+pub struct Neopixel {
+    pub ws_data: Pb3<Input<Floating>>,
 }
 
 // /// Dotstar pins

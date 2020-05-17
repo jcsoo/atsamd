@@ -76,4 +76,4 @@ name = "neopixel_rainbow"
 
 [[example]]
 name = "usb_serial"
-required-features = ["usb", "use_uart_debug"]
+required-features = ["usb"]

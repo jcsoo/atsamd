@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-/// Makes the itsybitsy_m4 appear as a USB serial port. The color of the
+/// Makes the feather_m4 appear as a USB serial port. The color of the
 /// dotstar LED can be changed by sending bytes to the serial port.
 ///
 /// Sending the characters R, G, and O set the LED red, green, and off
@@ -10,9 +10,10 @@
 /// $> sudo bash -c "echo 'R' > /dev/ttyACM0"
 /// $> sudo bash -c "echo 'G' > /dev/ttyACM0"
 /// $> sudo bash -c "echo 'O' > /dev/ttyACM0"
-extern crate itsybitsy_m4 as hal;
+extern crate feather_m4 as hal;
 extern crate panic_halt;
 
+use ws2812_timer_delay as ws2812;
 use hal::clock::GenericClockController;
 
 use cortex_m::interrupt::free as disable_interrupts;
@@ -26,9 +27,9 @@ use usb_device::bus::UsbBusAllocator;
 use usb_device::prelude::*;
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
-use hal::dbgprint;
+// use hal::dbgprint;
 use hal::time::Hertz;
-use hal::{uart, uart_debug};
+use hal::{uart};
 
 use hal::timer::SpinTimer;
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
@@ -47,23 +48,29 @@ fn main() -> ! {
     let mut pins = hal::Pins::new(peripherals.PORT).split();
     let rstc = &peripherals.RSTC;
 
-    let mut rgb = hal::dotstar_bitbang(pins.dotstar, &mut pins.port, SpinTimer::new(12));
-    rgb.write([RGB8 { r: 0, g: 0, b: 0 }].iter().cloned())
-        .unwrap();
+    // (Re-)configure PB3 as output
+    let ws_data_pin = pins.neopixel.ws_data.into_push_pull_output(&mut pins.port);
+    // Create a spin timer whoes period will be 9 x 120MHz clock cycles (75ns)
+    let timer = SpinTimer::new(9);
+    let mut neopixel = ws2812::Ws2812::new(timer, ws_data_pin);
 
-    uart_debug::wire_uart(uart(
-        pins.uart,
-        &mut clocks,
-        Hertz(115200),
-        peripherals.SERCOM3,
-        &mut peripherals.MCLK,
-        &mut pins.port,
-    ));
-    dbgprint!(
-        "\n\n\n\n~========== STARTING {:?} ==========~\n",
-        hal::serial_number()
-    );
-    dbgprint!("Last reset was from {:?}\n", hal::reset_cause(rstc));
+    // let mut rgb = hal::dotstar_bitbang(pins.dotstar, &mut pins.port, SpinTimer::new(12));
+    // rgb.write([RGB8 { r: 0, g: 0, b: 0 }].iter().cloned())
+    //     .unwrap();
+
+    // uart_debug::wire_uart(uart(
+    //     pins.uart,
+    //     &mut clocks,
+    //     Hertz(115200),
+    //     peripherals.SERCOM5,
+    //     &mut peripherals.MCLK,
+    //     &mut pins.port,
+    // ));
+    // dbgprint!(
+    //     "\n\n\n\n~========== STARTING {:?} ==========~\n",
+    //     hal::serial_number()
+    // );
+    // dbgprint!("Last reset was from {:?}\n", hal::reset_cause(rstc));
 
     let bus_allocator = unsafe {
         USB_ALLOCATOR = Some(pins.usb.usb_allocator(
@@ -102,8 +109,8 @@ fn main() -> ! {
             PENDING_COLOR = None;
             pending
         });
-        if let Some(color) = pending {
-            rgb.write(color.iter().cloned()).unwrap();
+        if let Some(colors) = pending {
+            neopixel.write(colors.iter().cloned()).unwrap();
         }
     }
 }
