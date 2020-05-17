@@ -1,5 +1,5 @@
 [package]
-name = "itsybitsy_m4"
+name = "feather_m4"
 version = "0.2.0"
 authors = [
     "Nic Hartley <nxh9052@rit.edu>",

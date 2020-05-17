@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-extern crate itsybitsy_m4 as hal;
+extern crate feather_m4 as hal;
 extern crate panic_halt;
 
 use hal::clock::GenericClockController;
