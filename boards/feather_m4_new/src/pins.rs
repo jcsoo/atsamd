@@ -95,15 +95,11 @@ impl Pins {
             a5: self.a5,
         };
 
+        let led_pin = self.d13;
+
         let neopixel = Neopixel {
             ws_data: self.neopixel,
         };
-
-        // let dotstar = Dotstar {
-        //     ci: self.dotstar_ci,
-        //     di: self.dotstar_di,
-        //     nc: self.dotstar_nc,
-        // };
 
         // let flash = QSPIFlash {
         //     sck: self.flash_sck,
@@ -137,6 +133,7 @@ impl Pins {
 
         Sets {
             analog,
+            led_pin,
             neopixel,
             spi,
             i2c,
@@ -153,8 +150,9 @@ pub struct Sets {
     /// Analog pins
     pub analog: Analog,
 
-    // /// Dotstar (RGB LED) pins
-    // pub dotstar: Dotstar,
+    /// Red Led
+    pub led_pin: Pa23<Input<Floating>>,
+
     pub neopixel: Neopixel,
 
     /// SPI (external pinout) pins
@@ -274,6 +272,29 @@ impl USB {
             usb,
         ))
     }
+
+    #[cfg(feature = "usb")]
+    /// Convenience for setting up the onboard usb port to operate
+    /// as a USB device.
+    pub fn init(
+        self,
+        usb: super::pac::USB,
+        clocks: &mut GenericClockController,
+        mclk: &mut MCLK,
+        port: &mut Port,
+    ) -> UsbBusAllocator<UsbBus> {
+        clocks.configure_gclk_divider_and_source(GEN_A::GCLK2, 1, SRC_A::DFLL, false);
+        let usb_gclk = clocks.get_gclk(GEN_A::GCLK2).unwrap();
+        let usb_clock = &clocks.usb(&usb_gclk).unwrap();
+
+        UsbBusAllocator::new(UsbBus::new(
+            usb_clock,
+            mclk,
+            self.dm.into_function(port),
+            self.dp.into_function(port),
+            usb,
+        ))
+    }    
 }
 
 /// UART pins
