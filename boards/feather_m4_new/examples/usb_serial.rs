@@ -16,6 +16,7 @@ extern crate panic_halt;
 use ws2812_timer_delay as ws2812;
 use hal::clock::GenericClockController;
 
+
 use cortex_m::interrupt::free as disable_interrupts;
 use cortex_m::peripheral::NVIC;
 use hal::entry;
@@ -26,10 +27,6 @@ use usb_device::bus::UsbBusAllocator;
 
 use usb_device::prelude::*;
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
-
-// use hal::dbgprint;
-use hal::time::Hertz;
-use hal::{uart};
 
 use hal::timer::SpinTimer;
 use smart_leds::{hsv::RGB8, SmartLedsWrite};
@@ -46,7 +43,6 @@ fn main() -> ! {
         &mut peripherals.NVMCTRL,
     );
     let mut pins = hal::Pins::new(peripherals.PORT).split();
-    let rstc = &peripherals.RSTC;
 
     // (Re-)configure PB3 as output
     let ws_data_pin = pins.neopixel.ws_data.into_push_pull_output(&mut pins.port);
@@ -73,7 +69,7 @@ fn main() -> ! {
     // dbgprint!("Last reset was from {:?}\n", hal::reset_cause(rstc));
 
     let bus_allocator = unsafe {
-        USB_ALLOCATOR = Some(pins.usb.usb_allocator(
+        USB_ALLOCATOR = Some(pins.usb.init(
             peripherals.USB,
             &mut clocks,
             &mut peripherals.MCLK,
@@ -84,7 +80,7 @@ fn main() -> ! {
 
     unsafe {
         USB_SERIAL = Some(SerialPort::new(&bus_allocator));
-        USB_BUS = Some(
+        USB_DEV = Some(
             UsbDeviceBuilder::new(&bus_allocator, UsbVidPid(0x16c0, 0x27dd))
                 .manufacturer("Fake company")
                 .product("Serial port")
@@ -102,7 +98,7 @@ fn main() -> ! {
         NVIC::unmask(interrupt::USB_TRCPT0);
         NVIC::unmask(interrupt::USB_TRCPT1);
     }
-
+ 
     loop {
         let pending = disable_interrupts(|_| unsafe {
             let pending = PENDING_COLOR;
@@ -116,13 +112,13 @@ fn main() -> ! {
 }
 
 static mut USB_ALLOCATOR: Option<UsbBusAllocator<UsbBus>> = None;
-static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
+static mut USB_DEV: Option<UsbDevice<UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
 static mut PENDING_COLOR: Option<[RGB8; 1]> = None;
 
 fn poll_usb() {
     unsafe {
-        USB_BUS.as_mut().map(|usb_dev| {
+        USB_DEV.as_mut().map(|usb_dev| {
             USB_SERIAL.as_mut().map(|serial| {
                 usb_dev.poll(&mut [serial]);
                 let mut buf = [0u8; 64];
@@ -133,14 +129,26 @@ fn poll_usb() {
                             break;
                         }
                         match c.clone() as char {
-                            'R' => {
+                            'R' | 'r' => {
                                 PENDING_COLOR = Some([RGB8 { r: 120, g: 0, b: 0 }]);
                             }
-                            'G' => {
+                            'G' | 'g' => {
                                 PENDING_COLOR = Some([RGB8 { r: 0, g: 120, b: 0 }]);
                             }
-                            'O' => {
+                            'B' | 'b' => {
+                                PENDING_COLOR = Some([RGB8 { r: 0, g: 0, b: 120 }]);
+                            }
+                            'O' | 'o' => {
                                 PENDING_COLOR = Some([RGB8 { r: 0, g: 0, b: 0 }]);
+                            }
+                            _ => {}
+                        }
+                    }
+                    let mut write_offset = 0;
+                    while write_offset < count {
+                        match serial.write(&buf[write_offset..count]) {
+                            Ok(len) if len > 0 => {
+                                write_offset += len;
                             }
                             _ => {}
                         }

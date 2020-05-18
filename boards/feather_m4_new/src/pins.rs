@@ -2,7 +2,6 @@
 
 use super::{hal, pac::MCLK, pac::SERCOM1, pac::SERCOM2, pac::SERCOM5, target_device};
 
-use embedded_hal::timer::{CountDown, Periodic};
 use hal::define_pins;
 use hal::gpio::{self, *};
 use hal::sercom::{I2CMaster2, PadPin, SPIMaster1, Sercom2Pad0, Sercom2Pad1, UART5};
@@ -10,8 +9,6 @@ use hal::time::Hertz;
 
 use hal::clock::GenericClockController;
 use super::pac::gclk::{genctrl::SRC_A, pchctrl::GEN_A};
-
-use apa102_spi::Apa102;
 
 #[cfg(feature = "usb")]
 use hal::usb::usb_device::bus::UsbBusAllocator;
